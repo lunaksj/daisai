@@ -1,7 +1,7 @@
 {
   "name": "daisai",
   "version": "1.0.0",
-  "description": "",
+  "description": "daisai",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,7 +10,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "4.16.3",
-    "socket.io": "2.1.1"
-  }
+    "express": "^4.16.3",
+    "http": "0.0.0",
+    "socket.io": "^2.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lunaksj/daisai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lunaksj/daisai/issues"
+  },
+  "homepage": "https://github.com/lunaksj/daisai#readme"
 }

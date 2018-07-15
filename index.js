@@ -152,8 +152,7 @@ function changeState()
 			io.emit('gameState', {
 				code: 100,
 				message: msg,
-				state: gameState.state,
-				user:user
+				state: gameState.state
 			});
 			break;
 		case 'RollDice':
@@ -170,8 +169,7 @@ function changeState()
 			io.emit('gameState', {
 				code: 100,
 				message: msg,
-				state: gameState.state,
-				user:user
+				state: gameState.state
 			});
 			break;
 		case 'Ready':
@@ -181,12 +179,11 @@ function changeState()
 
 			msg = "베팅시작, 10초뒤 베팅이 종료됩니다.";
 			console.log(msg);
-			
+
 			io.emit('gameState', {
 				code: 100,
 				message: msg,
-				state: gameState.state,
-				user:user
+				state: gameState.state
 			});
 			break;
 		default:
