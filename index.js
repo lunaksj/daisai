@@ -143,28 +143,51 @@ function changeState()
 {
 	switch(gameState.state){
 		case 'Betting':
-			msg = "베팅종료, 10초뒤 주사위 굴립니다.";
-			console.log(msg);
 			gameState.state="RollDice";
 			gameState.nextAction= setTimeout(changeState, 10000);
-			io.emit('gameState', msg);
+
+			msg = "베팅종료, 10초뒤 주사위 굴립니다.";
+			console.log(msg);
+
+			io.emit('gameState', {
+				code: 100,
+				message: msg,
+				state: gameState.state,
+				user:user
+			});
 			break;
 		case 'RollDice':
 			
 			gameState.state="Ready";
 			gameState.nextAction= setTimeout(changeState, 10000);
+
 			var dice = rollDice();
 			calcResult(dice);
+
 			msg = "주사위 결과 정산,"+ dice +", 10초뒤 베팅시작";
 			console.log(msg);
-			io.emit('gameState', msg);
+
+			io.emit('gameState', {
+				code: 100,
+				message: msg,
+				state: gameState.state,
+				user:user
+			});
 			break;
 		case 'Ready':
-			msg = "베팅시작, 10초뒤 베팅이 종료됩니다.";
-			console.log(msg);
-			io.emit('gameState', msg);
+			
 			gameState.state="Betting";
 			gameState.nextAction= setTimeout(changeState, 10000);
+
+			msg = "베팅시작, 10초뒤 베팅이 종료됩니다.";
+			console.log(msg);
+			
+			io.emit('gameState', {
+				code: 100,
+				message: msg,
+				state: gameState.state,
+				user:user
+			});
 			break;
 		default:
 			break;
