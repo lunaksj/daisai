@@ -19,7 +19,7 @@ io.on('connection', function(socket) {
 
     // socket에 클라이언트 정보를 저장한다
     socket.name = data.name;
-		socket.sockId = data.sockId;
+    socket.sockId = data.sockId;
     //socket.userid = data.userid;
 
     // 접속된 모든 클라이언트에게 메시지를 전송한다
@@ -27,22 +27,34 @@ io.on('connection', function(socket) {
 			name: data.name,
 			sockId: data.sockId,
 			//sock: socket,
-			asset: 50
-		} 
-		io.emit('login', user );
+			asset: 50,
+			roomId: 0,
+			roomPosX: 0,
+			roomPosZ: 0
+		};
+		socket.emit('login', user );
 		userQueue.set(user.name, user);
 		console.log(userQueue);
 	});
 	// force client disconnect from server
   socket.on('forceDisconnect', function() {
     socket.disconnect();
+    
+    if(socket.roomId != 0) {
+      notifyRoomLeave(socket.name, socket.roomId);
+    }
   })
 
   socket.on('disconnect', function() {
     console.log('user disconnected: ' + socket.name);
-		userQueue.delete(socket.name);
-		gameState.betInfo.delete(socket.name);
+    userQueue.delete(socket.name);
+    gameState.betInfo.delete(socket.name);
+    
+    if(socket.roomId != 0) {
+      notifyRoomLeave(socket.name, socket.roomId);
+    }
   });
+  
   // 현재 자신의 자산 및 게임상태 조회
   socket.on('getGameInfo', function(data) {
 	  console.log("getGameInfo");
@@ -128,6 +140,81 @@ io.on('connection', function(socket) {
 			}
 	 
   });
+
+	// 방입장, 탭이 왜이러지
+	socket.on('room_enter', function(data) {
+		console.log('room_enter: ', socket.name, data);
+		socket.roomId = data.roomId;
+		socket.roomPosX = 0;
+		socket.roomPosZ = 0;
+		
+		socket.join("roomId_"+data.roomId);
+		
+		var other_me = userQueue.get(socket.name);
+		other_me.roomId = data.roomId;
+		
+		
+		
+		// 방안에 있는 모든 유저에게 입장 일림
+		for (var [key, other] of userQueue) {
+			
+			// 다른방 유저는 제외
+			if(other.roomId != socket.roomId)
+				continue;
+			
+			// 나는 제외
+			if(other.name == socket.name)
+				continue;
+			
+			other.emit('room_notify', {
+				code: 100,
+				action: 'enter',
+				name: socket.name,
+				roomID: socket.roomId,
+				roomPosX: socket.roomPosX,
+				roomPosZ: socket.roomPosZ
+			});
+		}
+		
+		// 나에게 방안에 있는 모든 유저 입장 알림
+		var arr = [];
+		for (var [key, other] of userQueue) {
+			arr.push({
+				name: other.name,
+				roomPosX: other.roomPosX,
+				roomPosZ: other.roomPosZ
+			});
+		}
+		socket.emit("room_enter", {
+			code: 100,
+			roomId: socket.roomId,
+			roomPosX: socket.roomPosX,
+			roomPosZ: socket.roomPosZ,
+			others: arr
+		});
+	});
+	
+	// 방퇴장
+	socket.on('room_leave', function() {
+		console.log('room_in: ', socket.name, socket.roomId);
+		var roomId = socket.roomId;
+		socket.roomId = 0;
+		
+		socket.leave("roomId_"+roomId);
+		
+		notifyRoomLeave(socket.name, roomId);
+	});
+	
+	// 방에서 x, z 변경
+	socket.on('room_pos', function(data) {
+		console.log('room_pos: ', socket.name, data, socket.roomId);
+		socket.roomPosX = data.roomPosX;
+		socket.roomPosZ = data.roomPosZ;
+		
+		notifyRoomPos(socket);
+	});
+	
+	
 });
 
 server.listen(3000, function() {
@@ -251,5 +338,71 @@ function calcResult(dice)
 		io.to(user.sockId).emit('rollDice', message);
 	}
 	gameState.betInfo.clear();
+}
+
+function notifyRoomLeave(user_name, user_roomId) {
+	
+	console.log('notifyRoomLeave', user_name, user_roomId);
+	
+	io.to('roomId_'+user_roomId).emit('room_notify', {
+		code: 100,
+		action: 'leave',
+		name: user_name
+	});
+	
+	/*
+	// 방안에 있는 모든 유저에게 퇴장 알림
+	for (var [key, other] of userQueue) {
+		
+		// 다른방 유저는 제외
+		if(other.roomId != user_roomId)
+			continue;
+		
+		other.sock.emit('room_notify', {
+			code: 100,
+			action: 'leave',
+			name: user_name
+		});
+	}
+	*/
+}
+
+function notifyRoomPos(socket) {
+	
+	if(socket.roomId == 0) {
+		console.error('notifyRoomPos roomId zero');
+		return;
+	}
+	
+	console.log('notifyRoomPos', socket.name, socket.roomId, socket.roomPosX, socket.roomPosZ);
+	
+	io.to('roomId_'+socket.roomId).emit('room_notify', {
+		code: 100,
+		action: 'pos',
+		name: socket.name,
+		roomPosX: socket.roomPosX,
+		roomPosZ: socket.roomPosZ
+	});
+	
+	/*
+	// 방안에 있는 모든 유저에게 pos 알림
+	for (var [key, other] of userQueue) {
+		
+		// 다른방 유저는 제외
+		if(other.roomId != socket.roomId) {
+			console.log('skip', socket.roomId, other.roomId, socket.name);
+			continue;
+		}
+		
+		console.log('notify', other.name, '->', socket.name);
+		
+		other.sock.emit('room_notify', {
+			code: 100,
+			action: 'pos',
+			name: socket.name,
+			roomPosX: socket.roomPosX,
+			roomPosZ: socket.roomPosZ
+		});
+	}*/
 }
 
